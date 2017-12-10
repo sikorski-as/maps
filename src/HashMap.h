@@ -9,12 +9,6 @@
 #include <list>
 #include <functional>
 
-template<typename C>
-using iter = typename C::iterator;
-
-template<typename C>
-using citer = typename C::const_iterator;
-
 namespace aisdi
 {
 using std::vector;
@@ -27,7 +21,7 @@ public:
     using key_type = KeyType;
     using mapped_type = ValueType;
 
-    using value_type = std::pair<key_type, mapped_type>;
+    using value_type = std::pair<key_type, mapped_type>; // we need a copy-assignable objects - `const` qualifier removed
     using size_type = std::size_t;
     using reference = value_type&;
     using const_reference = const value_type&;
@@ -62,6 +56,7 @@ public:
 
     HashMap(std::initializer_list<value_type> initList)
     {
+        count = initList.size();
         initBuckets();
         for(value_type element: initList)
         {
@@ -70,15 +65,15 @@ public:
     }
 
     HashMap(const HashMap& other)
+    : buckets(other.buckets.begin(), other.buckets.end()), count(other.count)
     {
-        count = other.count;
-        buckets = other.buckets;
+
     }
 
     HashMap(HashMap&& other)
+    : buckets(std::move(other.buckets)), count(other.count)
     {
-        count = other.count;
-        buckets = std::move(other.buckets);
+
     }
 
     HashMap& operator=(const HashMap& other)
