@@ -8,131 +8,15 @@
 
 #include <boost/mpl/list.hpp>
 
-/*
-namespace
-{
-
-class OperationCountingObject
-{
-public:
-  OperationCountingObject(int value_ = 0)
-    : value(value_)
-  {
-    ++constructedObjects;
-  }
-
-  OperationCountingObject(const OperationCountingObject& other)
-    : value(std::move(other.value))
-  {
-    ++constructedObjects;
-    ++copiedObjects;
-  }
-
-  OperationCountingObject(OperationCountingObject&& other)
-    : value(other.value)
-  {
-    ++constructedObjects;
-    ++movedObjects;
-  }
-
-  ~OperationCountingObject()
-  {
-    ++destroyedObjects;
-  }
-
-  OperationCountingObject& operator=(const OperationCountingObject& other)
-  {
-    ++assignedObjects;
-    value = other.value;
-    return *this;
-  }
-
-  OperationCountingObject& operator=(OperationCountingObject&& other)
-  {
-    ++assignedObjects;
-    ++movedObjects;
-    value = std::move(other.value);
-    return *this;
-  }
-
-  operator int() const
-  {
-    return value;
-  }
-
-  static void resetCounters()
-  {
-    constructedObjects = 0;
-    destroyedObjects = 0;
-    copiedObjects = 0;
-    movedObjects = 0;
-    assignedObjects = 0;
-  }
-
-  static std::size_t constructedObjectsCount()
-  {
-    return constructedObjects;
-  }
-
-  static std::size_t destroyedObjectsCount()
-  {
-    return destroyedObjects;
-  }
-
-  static std::size_t copiedObjectsCount()
-  {
-    return copiedObjects;
-  }
-
-  static std::size_t movedObjectsCount()
-  {
-    return movedObjects;
-  }
-
-  static std::size_t assignedObjectsCount()
-  {
-    return assignedObjects;
-  }
-
-private:
-  int value;
-
-  static std::size_t constructedObjects;
-  static std::size_t destroyedObjects;
-  static std::size_t copiedObjects;
-  static std::size_t movedObjects;
-  static std::size_t assignedObjects;
-};
-
-std::size_t OperationCountingObject::constructedObjects = 0;
-std::size_t OperationCountingObject::destroyedObjects = 0;
-std::size_t OperationCountingObject::copiedObjects = 0;
-std::size_t OperationCountingObject::movedObjects = 0;
-std::size_t OperationCountingObject::assignedObjects = 0 ;
-
-std::ostream& operator<<(std::ostream& out, const OperationCountingObject& obj)
-{
-  return out << '<' << static_cast<int>(obj) << '>';
-}
-
-struct Fixture
-{
-  Fixture()
-  {
-    OperationCountingObject::resetCounters();
-  }
-};
-
-} // namespace
+using TestedKeyTypes = boost::mpl::list<std::int32_t, std::uint64_t>;
 
 template <typename K>
 using Map = aisdi::TreeMap<K, std::string>;
 
-using TestedKeyTypes = boost::mpl::list<std::int32_t, std::uint64_t, OperationCountingObject>;
 using std::begin;
 using std::end;
 
-BOOST_FIXTURE_TEST_SUITE(TreeMapTests, Fixture)
+BOOST_AUTO_TEST_SUITE(TreeMapTests)
 
 template <typename K>
 void thenMapContainsItems(const Map<K>& map,
@@ -149,77 +33,6 @@ void thenMapContainsItems(const Map<K>& map,
                         << " (expected: \"" << item.second
                         << "\" got: \"" << it->second << "\")");
   }
-}
-
-template <typename T>
-void thenConstructedObjectsCountWas(std::size_t count)
-{
-  (void) count;
-  // unable to check it (in a simple way) for all objects, hence template specialization.
-}
-
-template <typename T>
-void thenDestroyedObjectsCountWas(std::size_t count)
-{
-  (void) count;
-  // unable to check it (in a simple way) for all objects, hence template specialization.
-}
-
-template <typename T>
-void thenCopiedObjectsCountWas(std::size_t count)
-{
-  (void) count;
-  // unable to check it (in a simple way) for all objects, hence template specialization.
-}
-
-template <typename T>
-void thenMovedObjectsCountWas(std::size_t count)
-{
-  (void) count;
-  // unable to check it (in a simple way) for all objects, hence template specialization.
-}
-
-template <typename T>
-void thenAssignedObjectsCountWas(std::size_t count)
-{
-  (void) count;
-  // unable to check it (in a simple way) for all objects, hence template specialization.
-}
-
-template <typename T>
-void thenNoItemsWereCopiedOrMoved()
-{
-  // unable to check it (in a simple way) for all objects, hence template specialization.
-}
-
-template <>
-void thenConstructedObjectsCountWas<OperationCountingObject>(std::size_t count)
-{
-  BOOST_CHECK_EQUAL(OperationCountingObject::constructedObjectsCount(), count);
-}
-
-template <>
-void thenDestroyedObjectsCountWas<OperationCountingObject>(std::size_t count)
-{
-  BOOST_CHECK_EQUAL(OperationCountingObject::destroyedObjectsCount(), count);
-}
-
-template <>
-void thenCopiedObjectsCountWas<OperationCountingObject>(std::size_t count)
-{
-  BOOST_CHECK_EQUAL(OperationCountingObject::copiedObjectsCount(), count);
-}
-
-template <>
-void thenMovedObjectsCountWas<OperationCountingObject>(std::size_t count)
-{
-  BOOST_CHECK_EQUAL(OperationCountingObject::movedObjectsCount(), count);
-}
-
-template <>
-void thenAssignedObjectsCountWas<OperationCountingObject>(std::size_t count)
-{
-  BOOST_CHECK_EQUAL(OperationCountingObject::assignedObjectsCount(), count);
 }
 
 BOOST_AUTO_TEST_CASE_TEMPLATE(GivenMap_WhenCreatedWithDefaultConstructor_ThenItIsEmpty,
@@ -436,7 +249,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(GivenNonEmptyMap_WhenSearchingForKey_ThenItemIsRet
   BOOST_CHECK_EQUAL(it->second, "It!");
 }
 
-BOOST_AUTO_TEST_CASE_TEMPLATE(GivenEmptyMap_WhenGettingSize_ThenZeroIsReturnd,
+BOOST_AUTO_TEST_CASE_TEMPLATE(GivenEmptyMap_WhenGettingSize_ThenZeroIsReturned,
                               K,
                               TestedKeyTypes)
 {
@@ -445,7 +258,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(GivenEmptyMap_WhenGettingSize_ThenZeroIsReturnd,
   BOOST_CHECK_EQUAL(map.getSize(), 0);
 }
 
-BOOST_AUTO_TEST_CASE_TEMPLATE(GivenNonEmptyMap_WhenGettingSize_ThenItemCountIsReturnd,
+BOOST_AUTO_TEST_CASE_TEMPLATE(GivenNonEmptyMap_WhenGettingSize_ThenItemCountIsReturned,
                               K,
                               TestedKeyTypes)
 {
@@ -524,13 +337,14 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(GivenNonEmptyMap_WhenCreatingCopy_ThenAllItemsAreC
   thenMapContainsItems(other, { { 753, "Rome" }, { 1789, "Paris" } });
 }
 
-BOOST_AUTO_TEST_CASE_TEMPLATE(GivenEmptyMap_WhenMovingToOther_ThenMapIsEmpty,
+BOOST_AUTO_TEST_CASE_TEMPLATE(GivenEmptyMap_WhenMovingToOther_ThenBothMapsAreEmpty,
                               K,
                               TestedKeyTypes)
 {
   Map<K> map;
   Map<K> other{std::move(map)};
 
+  BOOST_CHECK(map.isEmpty());
   BOOST_CHECK(other.isEmpty());
 }
 
@@ -539,16 +353,10 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(GivenNonEmptyMap_WhenMovingToOther_ThenAllItemsAre
                               TestedKeyTypes)
 {
   Map<K> map = { { 753, "Rome" }, { 1789, "Paris" } };
+  const Map<K> other{std::move(map)};
 
-  OperationCountingObject::resetCounters();
-  Map<K> other{std::move(map)};
-
-  thenConstructedObjectsCountWas<K>(0);
-  thenCopiedObjectsCountWas<K>(0);
-  thenAssignedObjectsCountWas<K>(0);
-  thenMovedObjectsCountWas<K>(0);
-  thenDestroyedObjectsCountWas<K>(0);
   thenMapContainsItems(other, { { 753, "Rome" }, { 1789, "Paris" } });
+  BOOST_CHECK(map.isEmpty());
 }
 
 BOOST_AUTO_TEST_CASE_TEMPLATE(GivenEmptyMap_WhenAssigningToOther_ThenOtherMapIsEmpty,
@@ -598,7 +406,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(GivenNotEmptyMap_WhenSelfAssigning_ThenNothingHapp
   thenMapContainsItems(map, { { 42, "Alice" }, { 27, "Bob" } });
 }
 
-BOOST_AUTO_TEST_CASE_TEMPLATE(GivenEmptyMap_WhenMoveAssigning_ThenMapIsEmpty,
+BOOST_AUTO_TEST_CASE_TEMPLATE(GivenEmptyMap_WhenMoveAssigning_ThenBothMapsAreEmpty,
                               K,
                               TestedKeyTypes)
 {
@@ -608,6 +416,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(GivenEmptyMap_WhenMoveAssigning_ThenMapIsEmpty,
   other = std::move(map);
 
   BOOST_CHECK(other.isEmpty());
+  BOOST_CHECK(map.isEmpty());
 }
 
 BOOST_AUTO_TEST_CASE_TEMPLATE(GivenNonEmptyMap_WhenMoveAssigning_ThenAllElementsAreMoved,
@@ -617,15 +426,10 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(GivenNonEmptyMap_WhenMoveAssigning_ThenAllElements
   Map<K> map = { { 753, "Rome" }, { 1789, "Paris" } };
   Map<K> other = { { 42, "Alice" }, { 27, "Bob" } };
 
-  OperationCountingObject::resetCounters();
   other = std::move(map);
 
-  thenConstructedObjectsCountWas<K>(0);
-  thenCopiedObjectsCountWas<K>(0);
-  thenAssignedObjectsCountWas<K>(0);
-  thenMovedObjectsCountWas<K>(0);
-  thenDestroyedObjectsCountWas<K>(2);
   thenMapContainsItems(other, { { 753, "Rome" }, { 1789, "Paris" } });
+  BOOST_CHECK(map.isEmpty());
 }
 
 BOOST_AUTO_TEST_CASE_TEMPLATE(GivenEmptyMap_WhenReadingValueOfAnyKey_ThenExceptionIsThrown,
@@ -787,8 +591,88 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(GivenTwoMapsWithDifferentKeys_WhenComparingThem_Th
   BOOST_CHECK(map != other);
 }
 
+// MY TEST
+BOOST_AUTO_TEST_CASE_TEMPLATE(GivenNotEmptyMap_WhenRemovingValueThatHasChildByKey_ThenItemIsRemoved,
+                              K,
+                              TestedKeyTypes)
+{
+  Map<K> map = { { 42, "Alice" }, { 27, "Bob" } };
+
+  map.remove(42);
+
+  thenMapContainsItems(map, { { 27, "Bob" } });
+}
+
+// MY TEST
+BOOST_AUTO_TEST_CASE_TEMPLATE(GivenSingleItemMap_WhenRemovingValueByKeyAndAddingNew_ThenNewArePresent,
+                              K,
+                              TestedKeyTypes)
+{
+  Map<K> map = { { 27, "Bob" } };
+
+  map.remove(27);
+  BOOST_CHECK(begin(map) == end(map));
+
+  map[34] = "abc";
+  map[48] = "xkcd";
+  auto it = map.begin();
+  it++;
+
+  thenMapContainsItems(map, { { 34, "abc" }, { 48, "xkcd" } });
+  BOOST_CHECK_EQUAL(it->first, 48);
+}
+
+// MY TEST
+BOOST_AUTO_TEST_CASE_TEMPLATE(GivenThreeItemMap_WhenDereferencingDecrementedEndIterator_TheBiggesKeyIsReturned,
+                              K,
+                              TestedKeyTypes)
+{
+  Map<K> map = { { 27, "Bob" } };
+
+  map[34] = "abc";
+  map[48] = "xkcd";
+  auto it = map.end();
+  it--;
+
+  BOOST_CHECK_EQUAL(it->first, 48);
+}
+
+// MY TEST
+BOOST_AUTO_TEST_CASE_TEMPLATE(GivenSingleItemMap_WhenRemovingValueByKey_ThenDecrementingBeginThrowsException,
+                              K,
+                              TestedKeyTypes)
+{
+  Map<K> map = { { 27, "Bob" } };
+
+  map.remove(27);
+  BOOST_CHECK(begin(map) == end(map));
+
+
+  BOOST_CHECK_THROW(map.begin()--, std::out_of_range);
+  BOOST_CHECK_THROW(--(map.begin()), std::out_of_range);
+  BOOST_CHECK_THROW(map.cbegin()--, std::out_of_range);
+  BOOST_CHECK_THROW(--(map.cbegin()), std::out_of_range);
+
+}
+
+// MY TEST
+BOOST_AUTO_TEST_CASE_TEMPLATE(GivenNotEmptyMap_WhenGettingNextElement_ThenItemsAreInAscendingOrder,
+                              K,
+                              TestedKeyTypes)
+{
+  Map<K> map = { { 42, "Alice" }, { 27, "Bob" }, { 1, "Andrew" }, };
+
+  auto it = map.begin();
+  BOOST_CHECK_EQUAL(it->first, 1);
+  it++;
+  BOOST_CHECK_EQUAL(it->first, 27);
+  it++;
+  BOOST_CHECK_EQUAL(it->first, 42);
+  it++;
+  BOOST_CHECK(it == map.end());
+}
+
 // ConstIterator is tested via Iterator methods.
 // If Iterator methods are to be changed, then new ConstIterator tests are required.
 
 BOOST_AUTO_TEST_SUITE_END()
-*/

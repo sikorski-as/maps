@@ -5,14 +5,12 @@
 #include <initializer_list>
 #include <stdexcept>
 #include <utility>
-#include <vector>
-#include <list>
 #include <functional>
+#include <iostream>
+#include "LinkedList.h"
 
 namespace aisdi
 {
-using std::vector;
-using std::list;
 
 template <typename KeyType, typename ValueType>
 class HashMap
@@ -20,159 +18,222 @@ class HashMap
 public:
     using key_type = KeyType;
     using mapped_type = ValueType;
-
-    using value_type = std::pair<key_type, mapped_type>; // we need a copy-assignable objects - `const` qualifier removed
+    using value_type = std::pair<const key_type, mapped_type>;
     using size_type = std::size_t;
     using reference = value_type&;
     using const_reference = const value_type&;
-    using Bucket = list<value_type>;
 
     class ConstIterator;
     class Iterator;
     using iterator = Iterator;
     using const_iterator = ConstIterator;
-protected:
-    vector< Bucket > buckets;
-    size_type count;
+private:
+    LinkedList<value_type> * buckets;
+    size_type size;
+
+    inline size_type amountOfBuckets() const
+    {
+        return 8096;
+    }
+
+    void initBuckets()
+    {
+        buckets = new LinkedList<value_type>[amountOfBuckets()];
+    }
+
+    void deallocBuckets()
+    {
+        if(buckets != nullptr)
+            delete [] buckets;
+    }
 
     size_type getHash(const key_type& key) const
     {
-        return std::hash<key_type>()(key) % amountOfBuckets();
-    }
-    size_type amountOfBuckets() const
-    {
-        return 2048;
-    }
-    void initBuckets()
-    {
-        buckets.resize(amountOfBuckets());
-    }
-public:
-    HashMap()
-    {
-        count = 0;
-        initBuckets();
+        return std::hash<key_type>{}(key) % amountOfBuckets();
     }
 
-    HashMap(std::initializer_list<value_type> initList)
+    value_type& getDataForKey(const key_type &key) const
     {
-        count = initList.size();
-        initBuckets();
-        for(value_type element: initList)
+        auto hash = getHash(key);
+        for(auto it = buckets[hash].begin(); it != buckets[hash].end(); ++it)
+            if((*it).first == key)
+                return *it;
+        throw std::out_of_range("Attempt to get an element that is not in the map.");
+    }
+
+    bool isKeyInMap(const key_type & key) const
+    {
+        try
         {
-            buckets[getHash(element.first)].push_back(element);
+            getDataForKey(key);
+            return true;
+        }
+        catch(std::out_of_range)
+        {
+            return false;
         }
     }
 
-    HashMap(const HashMap& other)
-    : buckets(other.buckets.begin(), other.buckets.end()), count(other.count)
-    {
 
+
+public:
+    HashMap()
+    {
+        size = 0;
+        initBuckets();
+    }
+
+    ~HashMap()
+    {
+        deallocBuckets();
+    }
+
+    HashMap(std::initializer_list<value_type> list)
+    : HashMap()
+    {
+        for(auto element: list)
+            operator[](element.first) = element.second;
+    }
+
+    HashMap(const HashMap& other)
+    : HashMap()
+    {
+        size = other.size;
+        for(size_type i = 0; i < amountOfBuckets(); i++)
+            buckets[i] = other.buckets[i];
     }
 
     HashMap(HashMap&& other)
-    : buckets(std::move(other.buckets)), count(other.count)
+    : buckets(other.buckets), size(other.size)
     {
-
+        other.buckets = nullptr;
+        other.size = 0;
     }
 
     HashMap& operator=(const HashMap& other)
     {
-        if(*this != other)
-        {
-            count = other.count;
-            buckets = other.buckets;
-        }
+        if(other == *this)
+            return *this;
+
+        size = other.size;
+        for(size_type i = 0; i < amountOfBuckets(); i++)
+            buckets[i] = other.buckets[i];
         return *this;
     }
 
     HashMap& operator=(HashMap&& other)
     {
-        if(*this != other)
-        {
-            count = other.count;
-            buckets = std::move(other.buckets);
-        }
+        if(other == *this)
+            return *this;
+
+        buckets = other.buckets;
+        size = other.size;
+        other.buckets = nullptr;
+        other.size = 0;
+
         return *this;
     }
 
     bool isEmpty() const
     {
-        return count == 0;
+        return size == 0;
     }
 
     mapped_type& operator[](const key_type& key)
     {
+        auto hash = getHash(key);
         auto position = find(key);
         if(position == end())
         {
-            size_type hash = getHash(key);
-            buckets[hash].push_back(std::make_pair(key, mapped_type{}));
-            count++;
-            return (--buckets[hash].end())->second;
+            buckets[hash].prepend(std::make_pair(key, mapped_type{}));
+            size++;
+            return (*buckets[hash].begin()).second;
         }
         else
-            return position->second;
+        {
+            return buckets[position.whichBucket][position.whichElement].second;
+        }
     }
 
     const mapped_type& valueOf(const key_type& key) const
     {
-        auto position = find(key);
-        if(position == end())
-            throw std::out_of_range("Item with such key not found");
-        return position->second;
+        if(isEmpty())
+            throw std::out_of_range("Attempt to get a value from an empty map.");
+
+        return getDataForKey(key).second;
     }
 
     mapped_type& valueOf(const key_type& key)
     {
-        auto position = find(key);
-        if(position == end())
-            throw std::out_of_range("Item with such key not found");
-        return position->second;
+        if(isEmpty())
+            throw std::out_of_range("Attempt to get a value from an empty map.");
+
+        return getDataForKey(key).second;
     }
 
-    const_iterator find(const key_type& key) const
+    const_iterator find(const key_type& key) const // can be optimised
     {
-        auto bucketIterator = buckets.begin() + getHash(key);
-        for(auto inBucketIterator = bucketIterator->begin(); inBucketIterator != bucketIterator->end(); ++inBucketIterator)
-            if(inBucketIterator->first == key)
-                return ConstIterator(bucketIterator, inBucketIterator);
+        for(size_type i = 0; i < amountOfBuckets(); i++)
+        {
+            for(size_type counter = 0; counter < buckets[i].getSize(); counter++)
+            {
+                if(buckets[i][counter].first == key)
+                    return ConstIterator(this, i, counter);
+            }
+        }
         return cend();
     }
 
-    iterator find(const key_type& key)
+    iterator find(const key_type& key) // can be optimised
     {
-
-        auto bucketIterator = buckets.begin() + getHash(key);
-        for(auto inBucketIterator = bucketIterator->begin(); inBucketIterator != bucketIterator->end(); ++inBucketIterator)
-            if(inBucketIterator->first == key)
-                return Iterator(bucketIterator, inBucketIterator);
+        for(size_type i = 0; i < amountOfBuckets(); i++)
+        {
+            for(size_type counter = 0; counter < buckets[i].getSize(); counter++)
+            {
+                if(buckets[i][counter].first == key)
+                    return Iterator(this, i, counter);
+            }
+        }
         return end();
     }
 
     void remove(const key_type& key)
     {
-        (void)key;
-        throw std::runtime_error("TODO");
-        count--;
+        auto position = find(key);
+        if(position == end())
+            throw std::out_of_range("Attempt to remove from an empty map.");
+
+        size--;
+        buckets[position.whichBucket].erase(position.whichElement);
     }
 
     void remove(const const_iterator& it)
     {
-        (void)it;
-        throw std::runtime_error("TODO");
-        count--;
+        if(it == cend())
+            throw std::out_of_range("Attempt to remove from an empty map.");
+
+        size--;
+        buckets[it.whichBucket].erase(it.whichElement);
     }
 
     size_type getSize() const
     {
-        return count;
+        return size;
     }
 
     bool operator==(const HashMap& other) const
     {
+        if(size != other.size)
+            return false;
 
-        return *this == other ? true : count == other.count && buckets == other.buckets;
+        for(auto element : other)
+        {
+            auto foundEl = find(element.first);
+            if(foundEl == cend() || foundEl->second != element.second)
+                return false;
+        }
+
+        return true;
     }
 
     bool operator!=(const HashMap& other) const
@@ -182,98 +243,143 @@ public:
 
     iterator begin()
     {
-        auto whichBucket = buckets.begin();
-        return Iterator(whichBucket, whichBucket->begin());
+        return cbegin();
     }
 
     iterator end()
     {
-        auto whichBucket = buckets.end();
-        return Iterator(whichBucket, whichBucket->end());
+        return cend();
     }
 
     const_iterator cbegin() const
     {
-        auto whichBucket = buckets.begin();
-        return ConstIterator(whichBucket, whichBucket->begin());
+        for(size_type whichBucket = 0; whichBucket < amountOfBuckets(); whichBucket++)
+        {
+            if(buckets[whichBucket].getSize() > 0)
+                return ConstIterator(this, whichBucket, 0);
+        }
+        return cend();
+
     }
 
     const_iterator cend() const
     {
-        auto whichBucket = buckets.end();
-        return ConstIterator(whichBucket, whichBucket->end());
+        return ConstIterator(this, amountOfBuckets(), 0);
     }
 
     const_iterator begin() const
     {
-        auto whichBucket = buckets.begin();
-        return ConstIterator(whichBucket, whichBucket->begin());
+        return cbegin();
     }
 
     const_iterator end() const
     {
-        auto whichBucket = buckets.end();
-        return ConstIterator(whichBucket, whichBucket->end());
+        return cend();
     }
 };
 
 template <typename KeyType, typename ValueType>
 class HashMap<KeyType, ValueType>::ConstIterator
 {
-public:
     friend HashMap<KeyType, ValueType>;
+public:
     using reference = typename HashMap::const_reference;
     using iterator_category = std::bidirectional_iterator_tag;
     using value_type = typename HashMap::value_type;
     using pointer = const typename HashMap::value_type*;
-
-    using VectorOfBuckets = typename std::vector< std::list<value_type> >;
-    using VectorOfBucketsIterator = typename std::vector< std::list<value_type> >::const_iterator;
-    using Bucket = typename HashMap::Bucket;
-    using BucketIterator = typename HashMap::Bucket::const_iterator;
+    using size_type = HashMap::size_type;
 protected:
-    VectorOfBucketsIterator whichBucket;
-    BucketIterator whichElement;
-
-
-    ConstIterator(VectorOfBucketsIterator whichB, BucketIterator whichE)
+    HashMap<KeyType, ValueType> * whichMap;
+    size_type whichBucket;
+    size_type whichElement;
+    ConstIterator(const HashMap<KeyType, ValueType> * whichM, size_type whichB, size_type whichE)
     : whichBucket(whichB), whichElement(whichE)
     {
-
+        whichMap = const_cast<HashMap<KeyType, ValueType> *>(whichM);
     }
+
+
 public:
     explicit ConstIterator()
     {}
 
     ConstIterator(const ConstIterator& other)
     {
-        (void)other;
-        throw std::runtime_error("TODO");
+        whichMap = other.whichMap;
+        whichBucket = other.whichBucket;
+        whichElement = other.whichElement;
     }
 
     ConstIterator& operator++()
     {
-        throw std::runtime_error("TODO");
+        if(*this == whichMap->cend())
+            throw std::out_of_range("Attempt to increment end() iterator.");
+
+        if(whichElement + 1 < whichMap->buckets[whichBucket].getSize())
+        {
+            whichElement++;
+            return *this;
+        }
+
+        for(size_type i = whichBucket + 1; i < whichMap->amountOfBuckets(); i++)
+        {
+            if(whichMap->buckets[i].getSize() > 0)
+            {
+                whichBucket = i;
+                whichElement = 0;
+                return *this;
+            }
+        }
+
+        whichBucket = whichMap->amountOfBuckets(); // end iterator
+        whichElement = 0;
+        return *this;
     }
 
     ConstIterator operator++(int)
     {
-        throw std::runtime_error("TODO");
+        ConstIterator preObject(*this);
+        operator++();
+        return preObject;
     }
 
     ConstIterator& operator--()
     {
-        throw std::runtime_error("TODO");
+        if(*this == whichMap->cbegin())
+            throw std::out_of_range("Attempt to decrement begin() iterator.");
+
+        if(whichElement > 0)
+        {
+            whichElement--;
+            return *this;
+        }
+
+        for(size_type i = whichBucket - 1; i >= 0; i--)
+        {
+            if(whichMap->buckets[i].getSize() > 0)
+            {
+                whichBucket = i;
+                whichElement = whichMap->buckets[i].getSize() - 1;
+                return *this;
+            }
+        }
     }
 
     ConstIterator operator--(int)
     {
-        throw std::runtime_error("TODO");
+        ConstIterator preObject(*this);
+        operator--();
+        return preObject;
     }
 
     reference operator*() const
     {
-        throw std::runtime_error("TODO");
+        if(whichMap->isEmpty())
+            throw std::out_of_range("Attempt to dereference end() iterator in an empty map.");
+        if(whichMap->begin() == whichMap->cend())
+            throw std::out_of_range("Attempt to dereference end() iterator.");
+
+        return whichMap->buckets[whichBucket][whichElement];
     }
 
     pointer operator->() const
@@ -283,8 +389,7 @@ public:
 
     bool operator==(const ConstIterator& other) const
     {
-        (void)other;
-        throw std::runtime_error("TODO");
+        return whichMap == other.whichMap && whichBucket == other.whichBucket && whichElement == other.whichElement;
     }
 
     bool operator!=(const ConstIterator& other) const
@@ -296,21 +401,13 @@ public:
 template <typename KeyType, typename ValueType>
 class HashMap<KeyType, ValueType>::Iterator : public HashMap<KeyType, ValueType>::ConstIterator
 {
-public:
     friend HashMap<KeyType, ValueType>;
+public:
     using reference = typename HashMap::reference;
     using pointer = typename HashMap::value_type*;
-
-    using VectorOfBuckets = typename std::vector< std::list<value_type> >;
-    using VectorOfBucketsIterator = typename std::vector< std::list<value_type> >::iterator;
-    using Bucket = typename HashMap::Bucket;
-    using BucketIterator = typename HashMap::Bucket::iterator;
 protected:
-    VectorOfBucketsIterator whichBucket;
-    BucketIterator whichElement;
-
-    Iterator(VectorOfBucketsIterator whichB, BucketIterator whichE)
-    : whichBucket(whichB), whichElement(whichE)
+    Iterator(HashMap<KeyType, ValueType> * whichM, size_type whichB, size_type whichE)
+    : ConstIterator(whichM, whichB, whichE)
     {
 
     }
