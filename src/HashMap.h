@@ -354,7 +354,7 @@ public:
             return *this;
         }
 
-        for(size_type i = whichBucket - 1; i >= 0; i--)
+        for(size_type i = whichBucket - 1; true; i--)
         {
             if(whichMap->buckets[i].getSize() > 0)
             {
