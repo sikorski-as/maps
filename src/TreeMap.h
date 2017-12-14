@@ -185,7 +185,7 @@ public:
         }
 
         Node * next = head->left;
-        Node * current;
+        Node * current = nullptr;
         while(next != nullptr)
         {
             current = next;
