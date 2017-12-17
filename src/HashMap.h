@@ -33,7 +33,7 @@ private:
 
     inline size_type amountOfBuckets() const
     {
-        return 8096;
+        return 128000;
     }
 
     void initBuckets()
@@ -147,7 +147,7 @@ public:
         {
             buckets[hash].prepend(std::make_pair(key, mapped_type{}));
             size++;
-            return (*buckets[hash].begin()).second;
+            return buckets[hash][0].second;
         }
         else
         {

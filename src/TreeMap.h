@@ -100,12 +100,6 @@ protected:
         delete head;
     }
 
-    void swap(TreeMap& first, TreeMap& second) // to be removed
-    {
-        std::swap(first.head, second.head);
-        std::swap(first.size, second.size);
-    }
-
 public:
     TreeMap()
     {
